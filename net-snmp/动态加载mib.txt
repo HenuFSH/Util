@@ -1,0 +1,31 @@
+在net-snmp（net-snmp-5.4.1）环境中，添加自定义的mib库TEST-MIB. 添加步骤如下（红色部分）： 
+1、先创建自定义mib文件TEST-MIB.txt，放在/usr/local/net-snmp/share/snmp/mibs下
+2、echo "mibs +TEST-MIB" >> $HOME/.snmp/snmp.conf；
+
+   设置snmp开机启动：vi /etc/rc.local, 添加如下内容：
+      SNMP_HOME=/usr/local/net-snmp/share/snmp
+      SNMP_BIN_HOME=/usr/local/net-snmp/sbin
+      SNMP_CONF_HOME=/root/.snmp
+      $SNMP_BIN_HOME/snmpd -c $SNMP_HOME/snmpd.conf -c $SNMP_CONF_HOME/snmp.conf &
+3、重启snmp服务。具体操作：ps -ef|grep snmp；kill -9 snmp的pid
+4、查看TEST-MIB文件结构，snmptranslate -IR -Tp testObj；testObj为TEST-MIB库中定义的Ojbect
+5、利用mib2c生成testObj.c和testObj.h文件：mib2c -c mib2c.scalar.conf testObj ；修改testObj.c文件；
+6. 编写makefile，编译成testObj.so
+CC=gcc
+FLAGS=-I. `net-snmp-config --cflags` -g
+DLFLAGS=-shared -fPIC -g
+
+testObj.so: testObj.c
+	$(CC) $(CFLAGS) $(DLFLAGS) -c -o testObj.o testObj.c
+	$(CC) $(CFLAGS) $(DLFLAGS) -o testObj.so testObj.o
+  
+.PHONY : clean
+clean :
+	rm -f *.so *.o
+ 
+7. 修改配置文件，加载动态库文件：vi /usr/local/net-snmp/share/snmp/snmpd.conf
+   加入：dlmod testObj ${testObj.so所在绝对路径}/testObj.so
+    
+8. 启动snmpd：
+/usr/local/net-snmp/sbin/snmpd -c /usr/local/net-snmp/share/snmp/snmpd.conf -c /root/.snmp/snmp.conf -f -d -L -DtestObj
+--/usr/local/net-snmp/sbin/snmpd -c /usr/local/net-snmp/share/snmp/snmpd.conf -c /root/.snmp/snmp.conf -f -d -L -DtestObj,dlmod
