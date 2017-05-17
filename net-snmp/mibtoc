@@ -1,0 +1,11 @@
+#!/bin/bash
+
+mkdir mibtoc
+
+for line in `cat conf-file`
+do
+   mkdir $line
+   cd $line
+   env MIBS="+/usr/local/share/snmp/mibs/STRATUS-EVERRUN-MIB.txt" mib2c -c $line everRunVMTable
+   cd ..
+done
